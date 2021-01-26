@@ -1,0 +1,62 @@
+---
+title: "Discussion_1"
+author: "Teague Tran"
+date: "1/26/2021"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(lubridate)
+library(janitor)
+library(tsibble)
+library(feasts)
+library(shiny)
+```
+
+```{r}
+truckee <- read_csv(here("data", "truckee_river.csv"), skip = 29) %>% 
+  slice(-1) %>% 
+  select(datetime, discharge_cfs) %>% 
+  mutate(date = lubridate::mdy(datetime)) %>% 
+  mutate(discharge_cfs = as.numeric(discharge_cfs))
+
+truckee_ts <- truckee %>% 
+  as_tsibble(key = NULL, index = date)
+
+truckee_ts %>% 
+  gg_season(discharge_cfs)
+
+ggplot(data = truckee_ts, aes(x = date, y = discharge_cfs)) + 
+  geom_line()
+```
+```{r}
+inputPanel(
+  dateRangeInput(inputId = "dates", 
+                 label = "Select date range",
+                 min = "2010-01-01",
+                 max = "2021-01-24",
+                 start = "2010-01-01",
+                 end = "2021-01-24",
+                 format = "yyyy-mm-dd")
+  
+)
+
+truckee_react <- reactive({
+  truckee_ts %>% 
+    filter(date >= input$dates[1], #date is greater than 1st element picked
+           date <= input$dates[2]) #date is less than 2nd element picked
+})
+
+renderPlot ({
+  
+  ggplot(data = truckee_react(), aes(x = date, y = discharge_cfs)) + 
+    geom_line()
+})
+```
+
+
+
